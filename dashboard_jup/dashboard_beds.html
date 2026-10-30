@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard เตียงโรงพยาบาล – IPD สิทธิบัตรทอง</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      --bg: #0a0f1e;
+      --card: #0d1a2e;
+      --border: #1e3a5f;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --accent: #22d3ee;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --orange: #f97316;
+      --red: #ef4444;
+      --purple: #8b5cf6;
+      --pink: #e879f9;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'IBM Plex Sans Thai', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    .topbar {
+      background: linear-gradient(135deg, #0d1a2e 0%, #0a0f1e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    .brand h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.3px;
+    }
+    .brand p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .header-stats { display: flex; gap: 20px; flex-wrap: wrap; }
+    .hstat {
+      text-align: center;
+      padding: 6px 16px;
+      background: rgba(34,211,238,0.05);
+      border: 1px solid rgba(34,211,238,0.15);
+      border-radius: 8px;
+    }
+    .hstat .val { font-size: 20px; font-weight: 700; color: var(--accent); }
+    .hstat .lbl { font-size: 10px; color: var(--muted); }
+
+    /* FILTERS */
+    .filters {
+      padding: 14px 24px;
+      background: rgba(13,26,46,0.8);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .fgroup { display: flex; align-items: center; gap: 8px; }
+    .fgroup label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    select, input[type="search"] {
+      background: #0a0f1e;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    select:focus, input[type="search"]:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+    .seg { display: flex; gap: 2px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 2px; }
+    .seg button {
+      background: none; border: none; color: var(--muted); padding: 5px 12px;
+      border-radius: 6px; cursor: pointer; font-size: 12px; font-family: inherit;
+      transition: all 0.2s;
+    }
+    .seg button.on { background: var(--accent); color: #000; font-weight: 600; }
+
+    /* MAIN LAYOUT */
+    .main { padding: 20px 24px; }
+
+    /* KPI CARDS */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .kpi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--kc, var(--accent));
+    }
+    .kpi-card h3 { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-card .val { font-size: 28px; font-weight: 700; color: var(--kc, var(--accent)); margin: 6px 0 4px; }
+    .kpi-card .sub { font-size: 12px; color: var(--muted); }
+
+    /* GRID LAYOUT */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    /* CARDS */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card-head {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-head h2 { font-size: 14px; font-weight: 600; }
+    .card-head p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .card-body { padding: 16px 18px; }
+
+    /* MAP */
+    #map { width: 100%; height: 480px; border-radius: 0 0 var(--radius) var(--radius); }
+
+    /* CHART */
+    canvas { width: 100%; display: block; }
+
+    /* TABLE */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: rgba(34,211,238,0.08);
+      color: var(--muted);
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    th:hover { color: var(--accent); }
+    th.asc::after { content: ' ▲'; }
+    th.desc::after { content: ' ▼'; }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(30,58,95,0.5);
+      vertical-align: middle;
+    }
+    tr:hover td { background: rgba(34,211,238,0.04); }
+    tr.critical td { background: rgba(239,68,68,0.06); }
+    tr.near td { background: rgba(249,115,22,0.06); }
+
+    /* BOR BADGE */
+    .bor-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .bor-ok { background: rgba(16,185,129,0.15); color: var(--green); }
+    .bor-warn { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .bor-high { background: rgba(249,115,22,0.15); color: var(--orange); }
+    .bor-crit { background: rgba(239,68,68,0.15); color: var(--red); }
+
+    /* TIER BADGE */
+    .tier {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(139,92,246,0.15);
+      color: var(--purple);
+    }
+    .tier-A { background: rgba(34,211,238,0.15); color: var(--accent); }
+    .tier-S { background: rgba(139,92,246,0.15); color: var(--purple); }
+    .tier-M { background: rgba(16,185,129,0.15); color: var(--green); }
+
+    /* BAR */
+    .mini-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .mini-bar {
+      flex: 1;
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .mini-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+    /* PAGER */
+    .pager {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      padding: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .pager button {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+    }
+    .pager button.on { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+    .pager span { align-self: center; font-size: 12px; color: var(--muted); }
+
+    /* TOAST */
+    #toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; }
+    .toast-msg {
+      background: #1e3a5f;
+      border: 1px solid var(--accent);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 8px;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn { from { transform: translateX(60px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* TABS */
+    .tabs { display: flex; gap: 2px; padding: 0 24px; border-bottom: 1px solid var(--border); background: var(--card); }
+    .tab-btn {
+      padding: 12px 18px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+      font-family: inherit;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn.on { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-pane { display: none; }
+    .tab-pane.on { display: block; }
+
+    /* LOADER */
+    #loader {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s;
+    }
+    #loader.done { opacity: 0; pointer-events: none; }
+    .loader-inner { text-align: center; }
+    .loader-inner h2 { color: var(--accent); font-size: 20px; margin-bottom: 16px; }
+    .loader-bar {
+      width: 240px;
+      height: 4px;
+      background: rgba(34,211,238,0.15);
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 0 auto 12px;
+    }
+    .loader-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      animation: loading 1.5s ease-in-out infinite;
+    }
+    @keyframes loading {
+      0% { width: 0; margin-left: 0; }
+      50% { width: 60%; }
+      100% { width: 0; margin-left: 100%; }
+    }
+    .loader-inner p { font-size: 13px; color: var(--muted); }
+
+    /* SCATTER POINTS */
+    #scatter-svg { width: 100%; height: 320px; }
+    .scatter-point { cursor: pointer; transition: r 0.2s; }
+    .scatter-point:hover { r: 8; }
+
+    /* LEGEND */
+    .legend { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border); }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* SUMMARY STRIP */
+    .summary-strip {
+      display: flex;
+      gap: 8px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .s-chip {
+      padding: 4px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .chip-blue { background: rgba(34,211,238,0.12); color: var(--accent); }
+    .chip-green { background: rgba(16,185,129,0.12); color: var(--green); }
+    .chip-yellow { background: rgba(245,158,11,0.12); color: var(--yellow); }
+    .chip-orange { background: rgba(249,115,22,0.12); color: var(--orange); }
+    .chip-red { background: rgba(239,68,68,0.12); color: var(--red); }
+
+    /* COMPARE ROW */
+    .compare-row {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      font-size: 12px;
+    }
+    .cmp-label { color: var(--muted); min-width: 70px; }
+    .cmp-val { font-weight: 600; color: var(--text); min-width: 60px; text-align: right; }
+    .cmp-diff { margin-left: 4px; font-size: 11px; }
+    .diff-up { color: var(--orange); }
+    .diff-down { color: var(--green); }
+  </style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-inner">
+    <h2>กำลังโหลดข้อมูล…</h2>
+    <div class="loader-bar"><div class="loader-fill"></div></div>
+    <p id="loader-msg">โหลด ipd_dashboard_merged.json</p>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="brand">
+    <h1>📊 Dashboard เตียงโรงพยาบาล – IPD สิทธิบัตรทอง</h1>
+    <p id="data-src">รวมข้อมูลทุกแหล่ง: จำนวนเตียง.xlsx (895 รพ.) + ipd_dashboard_data.json (300 รพ.) + hosp_moph_top150.json · ปีข้อมูล 2566–2567</p>
+  </div>
+  <div class="header-stats" id="header-stats"></div>
+</header>
+
+<!-- FILTERS -->
+<div class="filters">
+  <div class="fgroup">
+    <label>เขตสุขภาพ</label>
+    <select id="f-zone"><option value="all">ทั้งหมด</option></select>
+  </div>
+  <div class="fgroup">
+    <label>ระดับโรงพยาบาล</label>
+    <select id="f-tier">
+      <option value="all">ทุกระดับ</option>
+      <option value="A">A – รพ.ศูนย์</option>
+      <option value="S">S – รพ.ทั่วไป</option>
+      <option value="M">M – รพ.ชุมชน M</option>
+      <option value="F1">F1</option>
+      <option value="F2">F2</option>
+      <option value="F3">F3</option>
+    </select>
+  </div>
+  <div class="fgroup">
+    <label>สถานะ BOR</label>
+    <div class="seg" id="f-bor-seg">
+      <button data-v="all" class="on">ทั้งหมด</button>
+      <button data-v="ok">ปกติ &lt;80%</button>
+      <button data-v="warn">ใกล้เต็ม 80-90%</button>
+      <button data-v="high">สูง 90-100%</button>
+      <button data-v="crit">วิกฤต &gt;100%</button>
+    </div>
+  </div>
+  <div class="fgroup" style="margin-left:auto">
+    <input type="search" id="f-search" placeholder="🔍 ค้นหาโรงพยาบาล / จังหวัด" style="width:220px">
+  </div>
+</div>
+
+<!-- TABS -->
+<nav class="tabs">
+  <button class="tab-btn on" data-tab="overview">📈 ภาพรวม</button>
+  <button class="tab-btn" data-tab="map">🗺️ แผนที่เตียง</button>
+  <button class="tab-btn" data-tab="compare">⚖️ เปรียบเทียบแหล่งข้อมูล</button>
+  <button class="tab-btn" data-tab="table">📋 ตารางโรงพยาบาล</button>
+</nav>
+
+<main class="main">
+
+  <!-- ===== TAB: OVERVIEW ===== -->
+  <div class="tab-pane on" id="pane-overview">
+    <div class="kpi-row" id="kpi-row"></div>
+    <div class="grid-2">
+      <!-- BOR Distribution -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>การกระจาย BOR โรงพยาบาล (ข้อมูล Excel)</h2>
+            <p>จำนวน รพ. แยกตามช่วง BOR จริงจากไฟล์จำนวนเตียง</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <canvas id="bor-chart" height="200"></canvas>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>ปกติ &lt;80%</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>ใกล้เต็ม 80-90%</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>สูง 90-100%</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>วิกฤต &gt;100%</div>
+        </div>
+      </div>
+      <!-- Beds by Zone -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>จำนวนเตียงรวมตามเขตสุขภาพ</h2>
+            <p>เปรียบเทียบเตียง IPD vs Excel</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <canvas id="zone-bed-chart" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <!-- CMI by Zone -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>ค่า CMI เฉลี่ยแยกตามเขตสุขภาพ</h2>
+            <p>Case Mix Index – ความซับซ้อนของผู้ป่วย</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <canvas id="cmi-chart" height="200"></canvas>
+        </div>
+      </div>
+      <!-- Top hospitals by BOR -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>Top 15 โรงพยาบาล BOR สูงสุด</h2>
+            <p>จากข้อมูลจำนวนเตียง (Excel)</p>
+          </div>
+        </div>
+        <div class="card-body" id="top-bor-list" style="max-height:280px;overflow-y:auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: MAP ===== -->
+  <div class="tab-pane" id="pane-map">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-head">
+        <div>
+          <h2>แผนที่สถานะเตียงโรงพยาบาล</h2>
+          <p>วงกลมใหญ่ = จำนวนเตียงมาก · สีแสดงสถานะ BOR จากข้อมูล Excel</p>
+        </div>
+        <div class="seg" id="map-color-seg">
+          <button data-v="bor" class="on">BOR Excel</button>
+          <button data-v="cmi">CMI</button>
+          <button data-v="beds">จำนวนเตียง</button>
+        </div>
+      </div>
+      <div id="map"></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#0e7490"></div>BOR &lt;60%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>60–80%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>80–90%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>90–100%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>&gt;100%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: COMPARE ===== -->
+  <div class="tab-pane" id="pane-compare">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <div>
+          <h2>⚖️ เปรียบเทียบ: เตียง IPD Dashboard vs จำนวนเตียงจริง (Excel)</h2>
+          <p>โรงพยาบาลที่มีข้อมูลทั้ง 2 แหล่ง – ตรวจสอบความแตกต่างของจำนวนเตียง</p>
+        </div>
+        <div class="fgroup">
+          <label>เรียงตาม</label>
+          <select id="cmp-sort">
+            <option value="diff_abs">ส่วนต่างมากสุด</option>
+            <option value="diff_pct">ส่วนต่าง %</option>
+            <option value="beds_excel">เตียง Excel มากสุด</option>
+            <option value="bor">BOR สูงสุด</option>
+          </select>
+        </div>
+      </div>
+      <div class="summary-strip" id="cmp-summary"></div>
+      <div class="table-wrap">
+        <table id="cmp-table">
+          <thead>
+            <tr>
+              <th>รหัส</th>
+              <th>โรงพยาบาล</th>
+              <th>จังหวัด</th>
+              <th>ระดับ</th>
+              <th>เตียง IPD</th>
+              <th>เตียง Excel</th>
+              <th>ส่วนต่าง</th>
+              <th>BOR Excel</th>
+              <th>CMI</th>
+            </tr>
+          </thead>
+          <tbody id="cmp-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: TABLE ===== -->
+  <div class="tab-pane" id="pane-table">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>ตารางโรงพยาบาลทั้งหมด (ข้อมูลรวม)</h2>
+          <p>รวมข้อมูลจาก ipd_dashboard_data.json + จำนวนเตียง.xlsx · คลิกหัวตาราง = เรียงลำดับ</p>
+        </div>
+        <button id="export-csv" style="background:rgba(34,211,238,0.1);border:1px solid var(--accent);color:var(--accent);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit">⬇ Export CSV</button>
+      </div>
+      <div class="summary-strip" id="tbl-summary"></div>
+      <div class="table-wrap">
+        <table id="main-table">
+          <thead id="tbl-head"></thead>
+          <tbody id="tbl-body"></tbody>
+        </table>
+      </div>
+      <div class="pager" id="tbl-pager"></div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="thailand_geojson.js"></script>
+<script>
+'use strict';
+// ============================================================
+// STATE
+// ============================================================
+const S = {
+  hospitals: [],
+  filtered: [],
+  zone: 'all',
+  tier: 'all',
+  borFilter: 'all',
+  search: '',
+  tab: 'overview',
+  tbl: { page: 1, sortKey: 'excel_bor', sortDir: -1 },
+  cmpSort: 'diff_abs',
+  mapColorMode: 'bor',
+  leafMap: null,
+  markers: null,
+  charts: {}
+};
+
+// ============================================================
+// UTILS
+// ============================================================
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const fmt = n => Math.round(Number(n) || 0).toLocaleString('en-US');
+const fmtF = (n, d = 1) => (Number(n) || 0).toFixed(d);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const debounce = (fn, ms = 180) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+function borClass(bor) {
+  if (!bor || bor <= 0) return 'na';
+  if (bor > 100) return 'crit';
+  if (bor > 90) return 'high';
+  if (bor > 80) return 'warn';
+  return 'ok';
+}
+function borColor(bor) {
+  const c = borClass(bor);
+  return { na: '#334155', ok: '#10b981', warn: '#f59e0b', high: '#f97316', crit: '#ef4444' }[c];
+}
+function borBadge(bor) {
+  if (!bor) return '<span class="bor-badge" style="background:rgba(100,116,139,0.15);color:#64748b">N/A</span>';
+  const c = borClass(bor);
+  const cls = { ok: 'bor-ok', warn: 'bor-warn', high: 'bor-high', crit: 'bor-crit' }[c] || 'bor-ok';
+  return `<span class="bor-badge ${cls}">${fmtF(bor)}%</span>`;
+}
+function tierBadge(tier) {
+  if (!tier) return '';
+  const t = String(tier).trim().split(/[\s(]/)[0];
+  const cls = { A: 'tier-A', S: 'tier-S', M: 'tier-M' }[t] || '';
+  return `<span class="tier ${cls}">${esc(t)}</span>`;
+}
+function showToast(msg, dur = 3000) {
+  const d = document.createElement('div');
+  d.className = 'toast-msg';
+  d.textContent = msg;
+  $('#toast').appendChild(d);
+  setTimeout(() => d.remove(), dur);
+}
+
+// ============================================================
+// LOAD DATA
+// ============================================================
+async function boot() {
+  try {
+    const r = await fetch('ipd_dashboard_merged.json');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    S.hospitals = data.hospitals || [];
+    init();
+  } catch (e) {
+    console.warn('fetch failed', e);
+    $('#loader-msg').textContent = 'โหลดไม่สำเร็จ รัน: python -m http.server แล้วเปิด http://localhost:8000/dashboard_beds.html';
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  buildZoneFilter();
+  bindUI();
+  applyFilters();
+  renderAll();
+  const ld = $('#loader');
+  ld.classList.add('done');
+  setTimeout(() => ld.remove(), 600);
+}
+
+function buildZoneFilter() {
+  const zones = [...new Set(S.hospitals.map(h => h.zone_name || h.zone).filter(Boolean))].sort();
+  const sel = $('#f-zone');
+  zones.forEach(z => {
+    const o = document.createElement('option');
+    o.value = z;
+    o.textContent = z;
+    sel.appendChild(o);
+  });
+}
+
+function bindUI() {
+  $('#f-zone').addEventListener('change', e => { S.zone = e.target.value; applyFilters(); renderAll(); });
+  $('#f-tier').addEventListener('change', e => { S.tier = e.target.value; applyFilters(); renderAll(); });
+  $('#f-search').addEventListener('input', debounce(e => { S.search = e.target.value.toLowerCase(); applyFilters(); renderAll(); }, 250));
+
+  $$('#f-bor-seg button').forEach(btn => btn.addEventListener('click', e => {
+    $$('#f-bor-seg button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    S.borFilter = btn.dataset.v;
+    applyFilters(); renderAll();
+  }));
+
+  $$('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
+    $$('.tab-btn').forEach(b => b.classList.remove('on'));
+    $$('.tab-pane').forEach(p => p.classList.remove('on'));
+    btn.classList.add('on');
+    const tab = btn.dataset.tab;
+    $(`#pane-${tab}`).classList.add('on');
+    S.tab = tab;
+    if (tab === 'map') setTimeout(initMap, 100);
+    if (tab === 'compare') renderCompare();
+    if (tab === 'table') renderTable();
+  }));
+
+  $('#cmp-sort').addEventListener('change', e => { S.cmpSort = e.target.value; renderCompare(); });
+
+  // Table sort
+  document.addEventListener('click', e => {
+    const th = e.target.closest('th[data-sort]');
+    if (!th) return;
+    const key = th.dataset.sort;
+    if (S.tbl.sortKey === key) S.tbl.sortDir *= -1;
+    else { S.tbl.sortKey = key; S.tbl.sortDir = -1; }
+    S.tbl.page = 1;
+    renderTable();
+  });
+
+  $('#export-csv').addEventListener('click', exportCSV);
+  $$('#map-color-seg button').forEach(btn => btn.addEventListener('click', () => {
+    $$('#map-color-seg button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    S.mapColorMode = btn.dataset.v;
+    updateMapMarkers();
+  }));
+}
+
+// ============================================================
+// FILTERS
+// ============================================================
+function applyFilters() {
+  S.filtered = S.hospitals.filter(h => {
+    if (S.zone !== 'all' && (h.zone_name || h.zone) !== S.zone) return false;
+    if (S.tier !== 'all') {
+      const t = String(h.excel_tier || h.tier || '').trim().split(/[\s(]/)[0];
+      if (t !== S.tier) return false;
+    }
+    if (S.borFilter !== 'all') {
+      const bor = h.excel_bor || h.bor || 0;
+      const c = borClass(bor);
+      if (S.borFilter === 'ok' && c !== 'ok') return false;
+      if (S.borFilter === 'warn' && c !== 'warn') return false;
+      if (S.borFilter === 'high' && c !== 'high') return false;
+      if (S.borFilter === 'crit' && c !== 'crit') return false;
+    }
+    if (S.search) {
+      const q = S.search;
+      const name = String(h.hname || '').toLowerCase();
+      const prov = String(h.prov_th || h.prov_en || '').toLowerCase();
+      const code = String(h.hcode || '');
+      if (!name.includes(q) && !prov.includes(q) && !code.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+// ============================================================
+// RENDER ALL
+// ============================================================
+function renderAll() {
+  renderHeaderStats();
+  renderKPIs();
+  renderBORChart();
+  renderZoneBedChart();
+  renderCMIChart();
+  renderTopBOR();
+  if (S.tab === 'table') renderTable();
+  if (S.tab === 'compare') renderCompare();
+  if (S.tab === 'map' && S.leafMap) updateMapMarkers();
+}
+
+// ============================================================
+// HEADER STATS
+// ============================================================
+function renderHeaderStats() {
+  const hs = S.filtered;
+  const withExcel = hs.filter(h => h.excel_beds > 0);
+  const totalBeds = withExcel.reduce((a, h) => a + (h.excel_beds || 0), 0);
+  const avgBOR = withExcel.length ? withExcel.reduce((a, h) => a + (h.excel_bor || 0), 0) / withExcel.length : 0;
+  const critCount = withExcel.filter(h => borClass(h.excel_bor) === 'crit').length;
+
+  $('#header-stats').innerHTML = `
+    <div class="hstat"><div class="val" style="color:var(--accent)">${fmt(hs.length)}</div><div class="lbl">รพ. ทั้งหมด</div></div>
+    <div class="hstat"><div class="val" style="color:var(--green)">${fmt(totalBeds)}</div><div class="lbl">เตียงรวม (Excel)</div></div>
+    <div class="hstat"><div class="val" style="color:var(--yellow)">${fmtF(avgBOR)}%</div><div class="lbl">BOR เฉลี่ย</div></div>
+    <div class="hstat"><div class="val" style="color:var(--red)">${fmt(critCount)}</div><div class="lbl">รพ.วิกฤต &gt;100%</div></div>
+  `;
+}
+
+// ============================================================
+// KPI CARDS
+// ============================================================
+function renderKPIs() {
+  const hs = S.filtered;
+  // Excel = hospitals that have excel_beds data
+  const withExcel = hs.filter(h => h.excel_beds > 0);
+  // IPD = hospitals that have ipd beds
+  const withIPD   = hs.filter(h => (h.beds_ipd || h.beds) > 0);
+  const totalBeds     = withExcel.reduce((a, h) => a + (h.excel_beds || 0), 0);
+  const totalIpdBeds  = withIPD.reduce((a, h) => a + (h.beds_ipd || h.beds || 0), 0);
+  const avgBOR  = withExcel.length ? withExcel.reduce((a, h) => a + (h.excel_bor || 0), 0) / withExcel.length : 0;
+  const avgCMI  = withExcel.length ? withExcel.filter(h => h.excel_cmi > 0).reduce((a, h) => a + h.excel_cmi, 0) /
+                  Math.max(1, withExcel.filter(h => h.excel_cmi > 0).length) : 0;
+  const totalAdmit = withExcel.reduce((a, h) => a + (h.excel_admit || 0), 0);
+  const critCount  = withExcel.filter(h => borClass(h.excel_bor) === 'crit').length;
+  const highCount  = withExcel.filter(h => borClass(h.excel_bor) === 'high').length;
+
+  const kpis = [
+    { label: 'โรงพยาบาลทั้งหมด', val: fmt(hs.length), sub: `มีข้อมูลเตียง ${withExcel.length} รพ.`, color: '#22d3ee' },
+    { label: 'เตียงรวม (จำนวนเตียง.xlsx)', val: fmt(totalBeds), sub: `${withExcel.length} รพ. | IPD: ${fmt(totalIpdBeds)} เตียง`, color: '#3b82f6' },
+    { label: 'BOR เฉลี่ย (Excel)', val: fmtF(avgBOR) + '%', sub: borClass(avgBOR) === 'crit' ? '⚠ วิกฤต' : borClass(avgBOR) === 'high' ? '⚠ สูง' : 'อยู่ในระดับที่ดูแลได้', color: borColor(avgBOR) },
+    { label: 'CMI เฉลี่ย', val: fmtF(avgCMI, 3), sub: 'Case Mix Index (ความซับซ้อนผู้ป่วย)', color: '#8b5cf6' },
+    { label: 'จำนวน Admit รวม (6 เดือน)', val: fmt(totalAdmit), sub: 'จากไฟล์จำนวนเตียง', color: '#10b981' },
+    { label: 'รพ. BOR สูง/วิกฤต', val: fmt(critCount + highCount), sub: `วิกฤต >100%: ${critCount} · สูง 90-100%: ${highCount}`, color: critCount > 0 ? '#ef4444' : highCount > 0 ? '#f97316' : '#10b981' },
+  ];
+
+  $('#kpi-row').innerHTML = kpis.map(k => `
+    <div class="kpi-card" style="--kc:${k.color}">
+      <h3>${esc(k.label)}</h3>
+      <div class="val">${k.val}</div>
+      <div class="sub">${esc(k.sub)}</div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+function renderBORChart() {
+  const hs = S.filtered.filter(h => h.excel_bor > 0);
+  const bins = [
+    { label: '<60%', min: 0, max: 60, color: '#0e7490' },
+    { label: '60-70%', min: 60, max: 70, color: '#0d9488' },
+    { label: '70-80%', min: 70, max: 80, color: '#10b981' },
+    { label: '80-90%', min: 80, max: 90, color: '#f59e0b' },
+    { label: '90-100%', min: 90, max: 100, color: '#f97316' },
+    { label: '>100%', min: 100, max: Infinity, color: '#ef4444' },
+  ];
+  const counts = bins.map(b => hs.filter(h => h.excel_bor >= b.min && h.excel_bor < b.max).length);
+
+  const ctx = $('#bor-chart');
+  if (S.charts.bor) S.charts.bor.destroy();
+  S.charts.bor = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: bins.map(b => b.label),
+      datasets: [{ data: counts, backgroundColor: bins.map(b => b.color + 'cc'), borderColor: bins.map(b => b.color), borderWidth: 1, borderRadius: 4 }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `จำนวน รพ.: ${ctx.raw}` } }
+      },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.06)' } }
+      }
+    }
+  });
+}
+
+function renderZoneBedChart() {
+  const zoneMap = {};
+  S.filtered.forEach(h => {
+    const z = h.zone_name || h.zone || 'อื่นๆ';
+    if (!zoneMap[z]) zoneMap[z] = { ipd: 0, excel: 0 };
+    zoneMap[z].ipd += h.beds || 0;
+    zoneMap[z].excel += h.excel_beds || 0;
+  });
+  const zones = Object.keys(zoneMap).sort();
+  const ctx = $('#zone-bed-chart');
+  if (S.charts.zoneBed) S.charts.zoneBed.destroy();
+  S.charts.zoneBed = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: zones,
+      datasets: [
+        { label: 'เตียง IPD', data: zones.map(z => zoneMap[z].ipd), backgroundColor: '#3b82f680', borderColor: '#3b82f6', borderWidth: 1, borderRadius: 3 },
+        { label: 'เตียง Excel', data: zones.map(z => zoneMap[z].excel), backgroundColor: '#22d3ee80', borderColor: '#22d3ee', borderWidth: 1, borderRadius: 3 }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.raw)} เตียง` } }
+      },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 10 }, maxRotation: 45 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#94a3b8', font: { size: 11 }, callback: v => fmt(v) }, grid: { color: 'rgba(255,255,255,0.06)' } }
+      }
+    }
+  });
+}
+
+function renderCMIChart() {
+  const zoneMap = {};
+  S.filtered.filter(h => h.excel_cmi > 0).forEach(h => {
+    const z = h.zone_name || h.zone || 'อื่นๆ';
+    if (!zoneMap[z]) zoneMap[z] = { sum: 0, cnt: 0 };
+    zoneMap[z].sum += h.excel_cmi;
+    zoneMap[z].cnt++;
+  });
+  const zones = Object.keys(zoneMap).sort();
+  const avgs = zones.map(z => zoneMap[z].cnt ? zoneMap[z].sum / zoneMap[z].cnt : 0);
+  const ctx = $('#cmi-chart');
+  if (S.charts.cmi) S.charts.cmi.destroy();
+  S.charts.cmi = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: zones,
+      datasets: [{ label: 'CMI เฉลี่ย', data: avgs.map(v => +v.toFixed(3)), backgroundColor: '#8b5cf680', borderColor: '#8b5cf6', borderWidth: 1, borderRadius: 3 }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `CMI: ${ctx.raw.toFixed(3)}` } }
+      },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.06)' } },
+        y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+function renderTopBOR() {
+  const hs = [...S.filtered].filter(h => h.excel_bor > 0).sort((a, b) => b.excel_bor - a.excel_bor).slice(0, 15);
+  const max = hs[0]?.excel_bor || 100;
+  $('#top-bor-list').innerHTML = hs.map(h => `
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:12px;color:var(--text)">${esc(h.hname)} <span style="color:var(--muted);font-size:11px">${esc(h.prov_th || h.prov_en || '')}</span></span>
+        ${borBadge(h.excel_bor)}
+      </div>
+      <div class="mini-bar"><div class="mini-bar-fill" style="width:${clamp((h.excel_bor/max)*100,0,100)}%;background:${borColor(h.excel_bor)}"></div></div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// MAP
+// ============================================================
+function initMap() {
+  if (S.leafMap) { updateMapMarkers(); return; }
+  const m = L.map('map', { zoomControl: true }).setView([13.7, 100.5], 6);
+  S.leafMap = m;
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+    attribution: '©OpenStreetMap ©CartoDB', maxZoom: 14
+  }).addTo(m);
+  S.markers = L.layerGroup().addTo(m);
+  updateMapMarkers();
+}
+
+function mapColor(h) {
+  if (S.mapColorMode === 'bor') return borColor(h.excel_bor || h.bor);
+  if (S.mapColorMode === 'cmi') {
+    const cmi = h.excel_cmi || 0;
+    if (cmi > 3) return '#ef4444';
+    if (cmi > 2) return '#f97316';
+    if (cmi > 1.5) return '#f59e0b';
+    if (cmi > 1) return '#10b981';
+    return '#0e7490';
+  }
+  if (S.mapColorMode === 'beds') {
+    const beds = h.excel_beds || h.beds || 0;
+    if (beds > 1000) return '#8b5cf6';
+    if (beds > 500) return '#3b82f6';
+    if (beds > 200) return '#22d3ee';
+    if (beds > 100) return '#10b981';
+    return '#64748b';
+  }
+  return '#22d3ee';
+}
+
+function mapRadius(h) {
+  const beds = h.excel_beds || h.beds || 50;
+  return Math.max(5, Math.min(24, Math.sqrt(beds) * 0.9));
+}
+
+function updateMapMarkers() {
+  if (!S.leafMap || !S.markers) return;
+  S.markers.clearLayers();
+  S.filtered.filter(h => h.lat && h.lng).forEach(h => {
+    const col = mapColor(h);
+    const r = mapRadius(h);
+    const circle = L.circleMarker([h.lat, h.lng], {
+      radius: r, fillColor: col, color: col,
+      fillOpacity: 0.75, weight: 1.5, opacity: 0.9
+    });
+    const bor = h.excel_bor || h.bor || 0;
+    const beds = h.excel_beds || h.beds || 0;
+    circle.bindPopup(`
+      <div style="font-family:IBM Plex Sans Thai,sans-serif;min-width:200px">
+        <b style="font-size:13px">${esc(h.hname)}</b><br>
+        <span style="color:#94a3b8;font-size:11px">${esc(h.prov_th || h.prov_en || '')} · ${esc(h.zone_name || h.zone || '')}</span>
+        <hr style="border-color:#334155;margin:8px 0">
+        <table style="width:100%;font-size:12px">
+          <tr><td style="color:#94a3b8">ระดับ</td><td style="text-align:right">${esc(h.excel_tier || h.tier || '-')}</td></tr>
+          <tr><td style="color:#94a3b8">เตียง (Excel)</td><td style="text-align:right;color:#22d3ee">${fmt(beds)}</td></tr>
+          <tr><td style="color:#94a3b8">เตียง (IPD)</td><td style="text-align:right">${fmt(h.beds || 0)}</td></tr>
+          <tr><td style="color:#94a3b8">BOR (Excel)</td><td style="text-align:right;color:${borColor(h.excel_bor)}">${fmtF(h.excel_bor || 0)}%</td></tr>
+          <tr><td style="color:#94a3b8">CMI</td><td style="text-align:right">${fmtF(h.excel_cmi || 0, 4)}</td></tr>
+          <tr><td style="color:#94a3b8">Admit (6 เดือน)</td><td style="text-align:right">${fmt(h.excel_admit || 0)}</td></tr>
+        </table>
+      </div>
+    `, { maxWidth: 280 });
+    circle.addTo(S.markers);
+  });
+}
+
+// ============================================================
+// COMPARE TABLE
+// ============================================================
+function renderCompare() {
+  const hs = S.filtered.filter(h => h.beds_source === 'excel' && h.beds > 0 && h.excel_beds > 0);
+  // Sort
+  const sortFn = {
+    diff_abs: (a, b) => Math.abs((b.excel_beds - b.beds)) - Math.abs((a.excel_beds - a.beds)),
+    diff_pct: (a, b) => Math.abs((b.excel_beds - b.beds) / b.beds) - Math.abs((a.excel_beds - a.beds) / a.beds),
+    beds_excel: (a, b) => b.excel_beds - a.excel_beds,
+    bor: (a, b) => (b.excel_bor || 0) - (a.excel_bor || 0)
+  };
+  hs.sort(sortFn[S.cmpSort] || sortFn.diff_abs);
+
+  // Summary
+  const match = hs.filter(h => Math.abs(h.excel_beds - h.beds) <= 5).length;
+  const more = hs.filter(h => h.excel_beds > h.beds).length;
+  const less = hs.filter(h => h.excel_beds < h.beds).length;
+  $('#cmp-summary').innerHTML = `
+    <span class="s-chip chip-blue">📊 ${hs.length} รพ. มีทั้ง 2 แหล่ง</span>
+    <span class="s-chip chip-green">✓ ตรงกัน (±5) ${match} รพ.</span>
+    <span class="s-chip chip-orange">↑ Excel มากกว่า ${more} รพ.</span>
+    <span class="s-chip chip-yellow">↓ Excel น้อยกว่า ${less} รพ.</span>
+  `;
+
+  $('#cmp-body').innerHTML = hs.map(h => {
+    const diff = h.excel_beds - h.beds;
+    const diffPct = h.beds > 0 ? (diff / h.beds * 100) : 0;
+    const rowClass = borClass(h.excel_bor) === 'crit' ? 'critical' : borClass(h.excel_bor) === 'high' ? 'near' : '';
+    return `<tr class="${rowClass}">
+      <td style="color:var(--muted);font-family:monospace">${esc(h.hcode)}</td>
+      <td>${esc(h.hname)}</td>
+      <td style="color:var(--muted)">${esc(h.prov_th || h.prov_en || '')}</td>
+      <td>${tierBadge(h.excel_tier || h.tier)}</td>
+      <td style="text-align:right">${fmt(h.beds)}</td>
+      <td style="text-align:right;color:var(--accent)">${fmt(h.excel_beds)}</td>
+      <td style="text-align:right">
+        <span class="${diff > 0 ? 'diff-up' : diff < 0 ? 'diff-down' : ''}" style="font-weight:600">
+          ${diff > 0 ? '+' : ''}${fmt(diff)}
+          <small style="font-size:10px">(${diff >= 0 ? '+' : ''}${diffPct.toFixed(1)}%)</small>
+        </span>
+      </td>
+      <td>${borBadge(h.excel_bor)}</td>
+      <td style="text-align:right">${fmtF(h.excel_cmi || 0, 4)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// MAIN TABLE
+// ============================================================
+const TBL_COLS = [
+  { key: 'hcode', label: 'รหัส', sort: true },
+  { key: 'hname', label: 'โรงพยาบาล', sort: true },
+  { key: 'prov_th', label: 'จังหวัด', sort: true },
+  { key: 'excel_tier', label: 'ระดับ', sort: true },
+  { key: 'excel_beds', label: 'เตียง Excel', sort: true },
+  { key: 'beds', label: 'เตียง IPD', sort: true },
+  { key: 'excel_bor', label: 'BOR Excel', sort: true },
+  { key: 'bor', label: 'BOR IPD', sort: true },
+  { key: 'excel_cmi', label: 'CMI', sort: true },
+  { key: 'excel_admit', label: 'Admit (6 เดือน)', sort: true },
+  { key: 'excel_score', label: 'Score', sort: true },
+];
+const PAGE_SIZE = 25;
+
+function renderTable() {
+  // Head
+  const k = S.tbl.sortKey;
+  const d = S.tbl.sortDir;
+  $('#tbl-head').innerHTML = '<tr>' + TBL_COLS.map(c =>
+    `<th data-sort="${c.key}" class="${c.sort ? (c.key === k ? (d > 0 ? 'asc' : 'desc') : '') : ''}">${esc(c.label)}</th>`
+  ).join('') + '</tr>';
+
+  // Sort
+  const sorted = [...S.filtered].sort((a, b) => {
+    const av = a[k] ?? '', bv = b[k] ?? '';
+    if (typeof av === 'number') return (av - bv) * d;
+    return String(av).localeCompare(String(bv), 'th') * d;
+  });
+
+  const total = sorted.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  S.tbl.page = clamp(S.tbl.page, 1, pages);
+  const slice = sorted.slice((S.tbl.page - 1) * PAGE_SIZE, S.tbl.page * PAGE_SIZE);
+
+  // Summary
+  const withExcel = S.filtered.filter(h => h.beds_source === 'excel');
+  $('#tbl-summary').innerHTML = `
+    <span class="s-chip chip-blue">แสดง ${total} รพ.</span>
+    <span class="s-chip chip-green">${withExcel.length} รพ. มีข้อมูล Excel</span>
+    <span class="s-chip chip-red">${S.filtered.filter(h => borClass(h.excel_bor) === 'crit').length} รพ. BOR วิกฤต</span>
+  `;
+
+  // Body
+  $('#tbl-body').innerHTML = slice.map(h => {
+    const rowCls = borClass(h.excel_bor) === 'crit' ? 'critical' : borClass(h.excel_bor) === 'high' ? 'near' : '';
+    return `<tr class="${rowCls}">
+      <td style="font-family:monospace;color:var(--muted);font-size:12px">${esc(h.hcode)}</td>
+      <td style="font-size:12px">${esc(h.hname)}</td>
+      <td style="color:var(--muted);font-size:12px">${esc(h.prov_th || h.prov_en || '')}</td>
+      <td>${tierBadge(h.excel_tier || h.tier)}</td>
+      <td style="text-align:right;color:var(--accent)">${h.excel_beds ? fmt(h.excel_beds) : '<span style="color:var(--muted)">-</span>'}</td>
+      <td style="text-align:right">${fmt(h.beds || 0)}</td>
+      <td>${borBadge(h.excel_bor)}</td>
+      <td>${borBadge(h.bor)}</td>
+      <td style="text-align:right">${fmtF(h.excel_cmi || 0, 4)}</td>
+      <td style="text-align:right">${h.excel_admit ? fmt(h.excel_admit) : '-'}</td>
+      <td style="text-align:right;color:var(--purple)">${h.excel_score ? fmtF(h.excel_score, 1) : '-'}</td>
+    </tr>`;
+  }).join('');
+
+  // Pager
+  const pager = $('#tbl-pager');
+  pager.innerHTML = '';
+  if (pages <= 1) return;
+  const mkBtn = (txt, pg, active = false) => {
+    const btn = document.createElement('button');
+    btn.textContent = txt;
+    if (active) btn.classList.add('on');
+    btn.addEventListener('click', () => { S.tbl.page = pg; renderTable(); });
+    pager.appendChild(btn);
+  };
+  const sp = document.createElement('span');
+  sp.textContent = `หน้า ${S.tbl.page} / ${pages}`;
+  mkBtn('‹', Math.max(1, S.tbl.page - 1));
+  pager.appendChild(sp);
+  mkBtn('›', Math.min(pages, S.tbl.page + 1));
+}
+
+// ============================================================
+// EXPORT CSV
+// ============================================================
+function exportCSV() {
+  const headers = TBL_COLS.map(c => c.label);
+  const keys = TBL_COLS.map(c => c.key);
+  const rows = [headers.join(',')];
+  S.filtered.forEach(h => {
+    rows.push(keys.map(k => {
+      const v = h[k] ?? '';
+      return `"${String(v).replace(/"/g, '""')}"`;
+    }).join(','));
+  });
+  const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `hospital_beds_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast(`⬇ Export CSV สำเร็จ (${S.filtered.length} รพ.)`);
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+boot();
+</script>
+</body>
+</html>

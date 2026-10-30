@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
 
@@ -33,15 +33,26 @@
     <p id="app-sub"></p>
   </div>
   <div class="head-kpis" aria-live="polite">
-    <div class="head-kpi"><small>เตียงว่างรวม (รพ.ที่มีข้อมูล)</small><div class="roll" id="hk-free"></div></div>
-    <div class="head-kpi warn"><small>โรงพยาบาลเกินพิกัดเตียง</small><div class="roll" id="hk-over"></div></div>
+    <div class="head-kpi"><small>โรงพยาบาลในรายชื่อ</small><div class="roll" id="hk-hosp"></div></div>
+    <div class="head-kpi"><small>เตียงเปิดจริง</small><div class="roll" id="hk-open"></div></div>
+    <div class="head-kpi"><small>บริการ IPD ต่อเตียง/เดือน · เฉลี่ย</small><div class="roll" id="hk-perbed"></div></div>
     <div class="head-kpi warn"><small>แถวข้อมูลที่ต้องตรวจสอบ</small><div class="roll" id="hk-err"></div></div>
   </div>
 </header>
 
+<section class="halloween-banner" aria-label="ธีมฮาโลวีน">
+  <div class="halloween-art" aria-hidden="true"><span class="moon"></span><span class="witch">🦇</span><span class="ghost">👻</span><span class="pumpkin">🎃</span></div>
+  <div class="halloween-copy">
+    <span class="halloween-kicker">IPD AFTER DARK · NIGHT SHIFT</span>
+    <h2>คืนหลอนในโลกข้อมูลสุขภาพ</h2>
+    <p>เข้าเวรดึกแล้ว… ลองเปิดดูตัวเลขที่ซ่อนอยู่</p>
+  </div>
+  <span class="halloween-stamp" aria-hidden="true">31<br><small>OCT</small></span>
+</section>
+
 <!-- Global Filters -->
 <section class="filters glass" aria-label="ตัวกรองหลัก">
-  <div class="fgroup"><span>ปีงบประมาณ</span>
+  <div class="fgroup"><span>ปีข้อมูล (ต.ค.–ก.ย.)</span>
     <div class="seg" id="f-fy">
       <button data-fy="2567" class="on">2567 <small style="opacity:.7">เทียบ 2566</small></button>
       <button data-fy="2566">2566</button>
@@ -61,21 +72,21 @@
   </div>
   <div class="fgroup"><span>ระบายสีแผนที่ตาม</span>
     <div class="seg" id="f-metric">
-      <button data-m="cases" class="on">จำนวนเคส</button>
+      <button data-m="cases" class="on">บริการ IPD</button>
       <button data-m="yoy">YoY</button>
-      <button data-m="bor">BOR</button>
+      <button data-m="perbed">บริการ/เตียง/เดือน</button>
       <button data-m="disease">โรคเด่น</button>
     </div>
   </div>
   <div class="scope-chips" id="scope-chips"></div>
 </section>
-<p class="yoy-legend" style="padding:8px 28px 0;margin:0">YoY = เทียบไตรมาสเดียวกันของปีงบประมาณก่อนหน้า · <b class="up">▲ แดง</b> ผู้ป่วยเพิ่ม (ภาระเพิ่ม) · <b class="down">▼ เขียว</b> ผู้ป่วยลด · ไตรมาสตามปีงบประมาณ (Q1 = ต.ค.–ธ.ค.)</p>
+<p class="yoy-legend" style="padding:8px 28px 0;margin:0">YoY = เทียบไตรมาสเดียวกันของปีข้อมูลก่อนหน้า · <b class="up">▲ แดง</b> ผู้ป่วยเพิ่ม (ภาระเพิ่ม) · <b class="down">▼ เขียว</b> ผู้ป่วยลด · แบ่งข้อมูลเป็นช่วง 3 เดือน (Q1 = ต.ค.–ธ.ค.)</p>
 
 <nav class="tabs" role="tablist" aria-label="เมนูหลัก">
   <button class="nav-tab-btn active" role="tab" data-tab="overview">1 · ภาพรวมประเทศ</button>
   <button class="nav-tab-btn" role="tab" data-tab="trend">2 · แนวโน้ม &amp; พยากรณ์</button>
   <button class="nav-tab-btn" role="tab" data-tab="zones">3 · เขตสุขภาพ</button>
-  <button class="nav-tab-btn" role="tab" data-tab="referral">4 · ส่งต่อผู้ป่วยอัจฉริยะ</button>
+  <button class="nav-tab-btn" role="tab" data-tab="referral">4 · ค้นหาเส้นทางส่งต่อ</button>
   <button class="nav-tab-btn" role="tab" data-tab="audit">5 · ตรวจสอบข้อมูล (Data Audit)<span class="tab-count" id="audit-badge">0</span></button>
 </nav>
 
@@ -106,7 +117,7 @@
     <div class="glass card">
       <div class="card-head">
         <div>
-          <h2 id="trend-title">แนวโน้มผู้ป่วยใน</h2>
+          <h2 id="trend-title">แนวโน้มบริการ IPD</h2>
           <p id="trend-sub"></p>
         </div>
         <div class="seg" id="trend-gran">
@@ -117,6 +128,7 @@
       <div class="trend-box"><svg id="trend-svg" viewBox="0 0 1000 340" role="img" aria-label="กราฟเส้นแนวโน้มและพยากรณ์"></svg><div id="trend-tip"></div></div>
       <div class="q-chips" id="q-chips"></div>
     </div>
+    <div class="glass card" id="monthly-bed-load"></div>
 
     <div class="dist-grid" id="dist-grid"></div>
 
@@ -136,30 +148,47 @@
   <!-- ===== TAB ZONES ===== -->
   <section id="tab-zones" class="tab-pane">
     <div class="card-head" style="margin-top:14px">
-      <div><h2>เปรียบเทียบเขตสุขภาพ (13 เขต)</h2><p>ดูปริมาณผู้ป่วย แนวโน้ม YoY และภาระเตียงของแต่ละเขตเคียงกัน · ใช้ตัวกรองปีงบ/ไตรมาส/ภูมิภาคด้านบนร่วมกัน</p></div>
-      <div class="fgroup"><span>เรียงตาม</span><div class="seg" id="zone-sort"><button data-z="cases" class="on">จำนวนเคส</button><button data-z="yoy">YoY</button><button data-z="bor">BOR</button></div></div>
+      <div><h2>เปรียบเทียบเขตสุขภาพ (13 เขต)</h2><p>ดูปริมาณบริการ IPD แนวโน้ม YoY และบริการเฉลี่ยต่อเตียงต่อเดือน · ใช้ตัวกรองปีข้อมูล/ไตรมาส/ภูมิภาคด้านบนร่วมกัน</p></div>
+      <div class="fgroup"><span>เรียงตาม</span><div class="seg" id="zone-sort"><button data-z="cases" class="on">จำนวนบริการ</button><button data-z="yoy">YoY</button><button data-z="perbed">บริการ/เตียง/เดือน</button></div></div>
     </div>
     <div class="zone-grid" id="zone-grid"></div>
   </section>
 
   <!-- ===== TAB 3 ===== -->
   <section id="tab-referral" class="tab-pane">
+    <div class="glass card occupancy-import">
+      <div class="card-head">
+        <div>
+          <h2>วิเคราะห์ข้อมูลครองเตียงย้อนหลังเพื่อจัดลำดับปลายทาง</h2>
+          <p>ใช้ occupied_beds และ BOR ที่มีอยู่ในชุดข้อมูลหลักเพื่อเปรียบเทียบย้อนหลัง ไม่ใช่สถานะปัจจุบัน · ช่วงบริการหลักครอบคลุม ต.ค. 2565–ก.ย. 2567 แต่ช่วงอ้างอิงของค่าครองเตียงไม่ได้ระบุแยกรายตัวชี้วัด</p>
+        </div>
+        <div class="occupancy-import-actions">
+          <button class="btn" id="ref-occupancy-template" type="button">ดาวน์โหลดแม่แบบข้อมูลย้อนหลัง</button>
+          <label class="btn orange" for="ref-occupancy-file">นำเข้าข้อมูลย้อนหลังเพิ่ม
+            <input id="ref-occupancy-file" type="file" accept=".csv,text/csv" hidden>
+          </label>
+          <button class="btn" id="ref-occupancy-clear" type="button">กลับไปใช้ชุดข้อมูลหลัก</button>
+        </div>
+      </div>
+      <p class="ins-note" id="ref-occupancy-status" aria-live="polite">กำลังใช้ค่าครองเตียงย้อนหลังจากชุดข้อมูลหลัก ไม่ใช่สถานะปัจจุบัน</p>
+      <p class="ins-note" id="ref-coverage">ขอบเขตข้อมูลและเส้นทางส่งต่อ</p>
+      <p class="ins-note">หากมีข้อมูลย้อนหลังชุดอื่น สามารถนำเข้า CSV ที่มี hcode, occupied_beds และ updated_at (วันอ้างอิงของข้อมูลนั้น) · ค่า “ส่วนต่างเตียง” คือเตียงเปิดจริงลบผู้ป่วยครองเตียง ไม่เท่ากับเตียงว่างที่ยืนยันจริง</p>
+    </div>
     <div class="ref-grid">
       <aside class="glass ref-list">
         <div id="ref-prov-chip" style="margin-bottom:8px;min-height:26px"></div>
         <input type="search" id="ref-q" placeholder="ค้นหาโรงพยาบาล / จังหวัด">
         <div class="seg" id="ref-status">
           <button data-s="all" class="on">ทั้งหมด</button>
-          <button data-s="CRITICAL_OVERLOAD">วิกฤต</button>
-          <button data-s="NEAR_CAPACITY">ใกล้เต็ม</button>
-          <button data-s="OPTIMAL_LOAD">ปกติ</button>
-          <button data-s="AVAILABLE_CAPACITY">ว่าง</button>
+          <button data-s="FULL" data-label="ครองเตียงย้อนหลัง ≥100%">ครองเตียงย้อนหลัง ≥100%</button>
+          <button data-s="NEAR_FULL" data-label="ครองเตียงย้อนหลัง ≥90%">ครองเตียงย้อนหลัง ≥90%</button>
+          <button data-s="HAS_AVAILABLE" data-label="มีส่วนต่างเตียงย้อนหลัง">มีส่วนต่างเตียงย้อนหลัง</button>
+          <button data-s="UNKNOWN_OCCUPANCY" data-label="ไม่มีข้อมูลย้อนหลัง">ไม่มีข้อมูลย้อนหลัง</button>
         </div>
         <ul id="ref-items"></ul>
       </aside>
       <div class="ref-map-wrap glass"><div id="ref-map"></div>
-        <div class="glass map-hud" id="ref-legend"><div class="lg-title">BOR เฉลี่ยของ รพ. ในจังหวัด</div>
-          <div class="lg-row"><i style="background:#0e7490"></i>&lt; 60%</div><div class="lg-row"><i style="background:#10b981"></i>60 – 75%</div><div class="lg-row"><i style="background:#f59e0b"></i>75 – 90%</div><div class="lg-row"><i style="background:#f97316"></i>90 – 100%</div><div class="lg-row"><i style="background:#ef4444"></i>&gt; 100%</div><div class="lg-row"><i style="background:#0d1830;border:1px solid #334155"></i>ไม่มีข้อมูล</div></div></div>
+        <div class="glass map-hud" id="ref-legend"><div class="lg-title">สัดส่วนครองเตียงรวมรายจังหวัด</div></div></div>
       <aside class="glass ref-side" id="ref-side"></aside>
     </div>
   </section>
@@ -172,10 +201,9 @@
       <div class="card-head">
         <div>
           <h2>ตารางคัดกรองข้อมูลดิบโรงพยาบาล</h2>
-          <p>แถวสีส้มสะท้อนแสง = Error ที่ต้องแก้ · แถบเหลือง = คำเตือน · แก้ไขช่อง "เตียง" หรือ "ใช้อยู่" ได้ทันที ระบบจะคำนวณ BOR และเตียงว่างใหม่แล้วตรวจซ้ำให้</p>
+          <p>Error หมายถึงรายการที่ควรตรวจสอบ ไม่ได้ยืนยันว่าข้อมูลผิดแน่นอน · รวมกรณีจำนวนเตียงต่างจาก MOPH ซึ่งอาจมาจากนิยามหรือช่วงเวลาไม่ตรงกัน · รายการผิดปกติใน CSV ต้นทางแสดงแยกต่างหาก · ยอดบริการรายเดือนมีเฉพาะระดับจังหวัด/เขต/ประเทศ ไม่ได้แยกรายโรงพยาบาล และไม่ใช่ข้อมูลผู้ป่วยคงค้างหรือวันนอน</p>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn orange" id="aud-sync" title="คำนวณ BOR และเตียงว่างใหม่จากจำนวนเตียงและผู้ป่วยในแถวที่ไม่ตรงกัน">ซิงก์ BOR / เตียงว่างอัตโนมัติ</button>
           <button class="btn orange" id="aud-csv">ส่งออกรายงานปัญหา (CSV)</button>
           <button class="btn" id="aud-json">ดาวน์โหลด JSON ที่แก้ไขแล้ว</button>
           <button class="btn" id="aud-reset">คืนค่าเดิมทั้งหมด</button>
@@ -210,6 +238,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <!-- ไฟล์ขอบเขตจังหวัดของคุณ (ถ้าไม่มีไฟล์นี้ ระบบจะลองโหลด thailand_provinces.geojson แทน) -->
 <script src="thailand_geojson.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=43"></script>
 </body>
 </html>
