@@ -1,6 +1,6 @@
 # 🏥 National IPD Healthcare Analytics & Smart Referral System
 > **รายงานโครงการแดชบอร์ดวิเคราะห์ข้อมูลผู้ป่วยใน (IPD) และระบบบริหารจัดการเตียงส่งต่อสถานพยาบาล**
-
+## ลิ้งก์ Dashboard https://stellular-tartufo-f79baf.netlify.app
 ---
 
 ## 👥 รายชื่อผู้จัดทำโครงการ (Project Members)
